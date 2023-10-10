@@ -91,15 +91,11 @@ typedef struct _MallInfoA {
         int first;
 }MallInfoA;
 
-//extern MallInfoA mallinfoA;
-
-/*그냥 캐스팅 용도로만 사용할까*/
 typedef struct _Malloc_Chunk {
         long long int prev_size;           /* Size of previous chunk (if free).  */
         long long int size;                /* Size in bytes, including overhead. */
         struct _Malloc_Chunk* fd;    /* double links -- used only if free. */
         struct _Malloc_Chunk* bk;
-        /*아 할필요가 없구나 그냥 size만 입력하면 되니까*/
 }Malloc_Chunk;
 
 typedef Malloc_Chunk* MemoryAdr;
@@ -188,74 +184,45 @@ MemoryAdr myalloc(size_t size)
   size = make_align(size);
   //printf("[DEBUG] Malloc Brain Pack input size : %lx\n", size);
 	if(!check_first_allocate()){
-        //printf("[DEBUG] check first allocate!\n");
         /* if first call malloc */
         init_Malloc(TRUE);
-        //printf("[DEBUG] initial malloc\n");
         /* Top chunk 분할 */
         division_TopChunk(&chunk_address, size); //이중 포인터로 넘겨야 함.
-        //printf("[DEBUG] division_TopChunk\n");
-        /* 바로 메모리 할당 하면 됨 (fastbin 등 탐색 ㄴㄴ)*/
     }
     else{
       //check fastbin or unsorted bin or small bin
       //find fastbin chunk
       if(size >= 0x20 && size <= FAST_MAX_SIZE){
         if(!find_fastbin_chunk(&chunk_address, size)){ //return 0, don't exist chunk
-          //printf("[DEBUG] failed fastbin chunk!\n");
-          //top chunk 부족한감
+          //top chunk 부족한가
           if(!check_top_chunk_size(size)){
             init_Malloc(FALSE);
           }
-          //printf("[DEBUG] OK1\n");
           division_TopChunk(&chunk_address, size);
-          //printf("[DEBUG] OK2 : %p\n", chunk_address);
         }
       }
       // find unsortedbin chunk
       else if(FAST_MAX_SIZE<size && size <= SMALLBIN_MAX){
-        //debug_search_list();
-        //printf("[CHECK] 1 step\n");
-      //debug_search_list();
         if(!find_unsortedbin_chunk(&chunk_address, size)){ //return 0 don't exist chunk
-          //printf("[CHECK] 2 step\n");
-          //printf("[DEBUG] : failed unsortedbin!\n");
-          //printf("[DEBUG] OK I will take this size : %ld\n", size);
           if(!find_smallbin_chunk(&chunk_address, size)){
-              //printf("[CHECK] 3 step\n");
-              //printf("[DEBUG] OK!\n");
-              //top chunk가 부족한감
               if(!check_top_chunk_size(size)){
-                //printf("[CHECK] 4 step\n");
                 init_Malloc(FALSE);
-                //printf("[CHECK] 8 step\n");
               }
               division_TopChunk(&chunk_address, size);
-              //printf("[CHECK] 5 step\n");
-                // top chunk 분할
           }
         }
-        //printf("[DEBUG] : returning pointer : %p\n", chunk_address);
-        //printf("[CHECK] 6 step\n");
       }
       //other size
       else{
-        //printf("[DEBUG] OK Other size\n");
         if(!check_top_chunk_size(size)){
           init_Malloc(FALSE);
         }
         division_TopChunk(&chunk_address, size);
       }
     }
-    //set_inuse(chunk_address); //prev inuse bit set 여기 둬도 되는가
     MemoryAdr userspace = chunk_at_offset(chunk_address, 16);
-    //printf("Test : %p\n", userspace);
     set_inuse_bit(&chunk_address);
-    //printf("[DEBUG] chunk : %p\n", (chunk_address));
-    //printf("[DEBUG] chunk size : %lld\n", (chunk_address->size));
     return (void*)userspace;
-    //return (void*)chunk_at_offset(chunk_address, 16); //usersapce
-    //return chunk_address+2; //userspace
 }
 
 boolean check_top_chunk_size(size_t size)
